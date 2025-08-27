@@ -1,18 +1,5 @@
-{
-  "name": "elevenlabs-tts-proxy",
-  "version": "1.0.0",
-  "description": "ElevenLabs TTS proxy service for Voiceflow",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "node-fetch": "^2.6.7",
-    "dotenv": "^16.0.3"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  }
-}
+// Instead of saving files, return base64 like original
+const audioBuffer = await response.arrayBuffer();
+const base64Audio = Buffer.from(audioBuffer).toString('base64');
+const audioDataURI = `data:audio/mpeg;base64,${base64Audio}`;
+res.json({ audioDataURI });
