@@ -1,10 +1,20 @@
 // server.js
 const express = require('express');
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+
+// Serve static files (audio files)
+app.use('/audio', express.static('audio'));
+
+// Create audio directory if it doesn't exist
+if (!fs.existsSync('audio')) {
+  fs.mkdirSync('audio');
+}
 
 app.post('/synthesize', async (req, res) => {
   const { text, voice = '21m00Tcm4TlvDq8ikWAM', voice_settings = {} } = req.body;
@@ -27,10 +37,17 @@ app.post('/synthesize', async (req, res) => {
     });
 
     const audioBuffer = await response.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
-    const audioDataURI = `data:audio/mpeg;base64,${audioBase64}`;
     
-    res.json({ audioDataURI });
+    // Save audio to file
+    const fileName = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
+    const filePath = path.join('audio', fileName);
+    fs.writeFileSync(filePath, Buffer.from(audioBuffer));
+    
+    // Return the URL to the audio file
+    const audioUrl = `https://elevenlabstest-production.up.railway.app/audio/${fileName}`;
+    
+    res.json({ audioUrl });
+    
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
