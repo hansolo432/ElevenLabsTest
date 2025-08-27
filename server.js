@@ -1,57 +1,77 @@
-// server.js
-const express = require('express');
-const fetch = require('node-fetch');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+require('dotenv').config()
+const express = require('express')
+const axios = require('axios')
+const app = express()
+const port = process.env.PORT || 3000
 
-const app = express();
-app.use(express.json());
+app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
 
-// Serve static files (audio files)
-app.use('/audio', express.static('audio'));
-
-// Create audio directory if it doesn't exist
-if (!fs.existsSync('audio')) {
-  fs.mkdirSync('audio');
-}
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    console.error(error)
+    return res.status(400).send({ message: 'Malformed JSON in payload' })
+  }
+  next()
+})
 
 app.post('/synthesize', async (req, res) => {
-  const { text, voice = '21m00Tcm4TlvDq8ikWAM', voice_settings = {} } = req.body;
+  let text = req.body.text || null
   
-  try {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`, {
-      method: 'POST',
-      headers: {
-        'xi-api-key': process.env.ELEVENLABS_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-          stability: voice_settings.stability || 0.5,
-          similarity_boost: voice_settings.similarity_boost || 0.75
+  if (!text) {
+    res.status(400).send({ error: 'Text is required.' })
+    return
+  }
+  
+  // Remove double quotes from text
+  text = text.replace(/"/g, '')
+  
+  const voice =
+    req.body.voice == 0
+      ? '21m00Tcm4TlvDq8ikWAM'
+      : req.body.voice || '21m00Tcm4TlvDq8ikWAM'
+  const model = req.body.model || 'eleven_multilingual_v2'
+  const voice_settings =
+    req.body.voice_settings == 0
+      ? {
+          stability: 0.75,
+          similarity_boost: 0.75,
         }
-      })
-    });
+      : req.body.voice_settings || {
+          stability: 0.75,
+          similarity_boost: 0.75,
+        }
 
-    const audioBuffer = await response.arrayBuffer();
+  try {
+    const response = await axios.post(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice}`,
+      {
+        text: text.replace(/"/g, '\\"'), // escape inner double quotes ,
+        voice_settings: voice_settings,
+        model_id: model,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'audio/mpeg',
+          'xi-api-key': `${process.env.ELEVENLABS_API_KEY}`,
+        },
+        responseType: 'arraybuffer',
+      }
+    )
     
-    // Save audio to file
-    const fileName = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
-    const filePath = path.join('audio', fileName);
-    fs.writeFileSync(filePath, Buffer.from(audioBuffer));
+    const audioBuffer = Buffer.from(response.data, 'binary')
+    const base64Audio = audioBuffer.toString('base64')
+    const audioDataURI = `data:audio/mpeg;base64,${base64Audio}`
     
-    // Return the URL to the audio file
-    const audioUrl = `https://elevenlabstest-production.up.railway.app/audio/${fileName}`;
-    
-    res.json({ audioUrl });
+    res.send({ audioDataURI })
     
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error)
+    res.status(500).send('Error occurred while processing the request.')
   }
-});
+})
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(port, () => {
+  console.log(`Server is running at http://localhost:${port}`)
+})
