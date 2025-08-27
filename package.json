@@ -1,5 +1,31 @@
-// Instead of saving files, return base64 like original
-const audioBuffer = await response.arrayBuffer();
-const base64Audio = Buffer.from(audioBuffer).toString('base64');
-const audioDataURI = `data:audio/mpeg;base64,${base64Audio}`;
-res.json({ audioDataURI });
+{
+  "name": "vf-elevenlabs",
+  "version": "1.0.0",
+  "description": "ElevenLabs TTS integration for Voiceflow",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hansolo432/ElevenLabsTest.git"
+  },
+  "author": "Your Name",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5",
+    "axios": "^1.6.8"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "elevenlabs",
+    "tts",
+    "voiceflow",
+    "api"
+  ]
+}
